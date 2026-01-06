@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 
+//schema for a note
 type Note = {
   id: string;
   title: string;
@@ -18,21 +19,28 @@ type Note = {
   createdAt: number;
 };
 
+
+//the 3 types of screens there are
 type Screen = "home" | "add" | "edit";
 const STORAGE_KEY = "notes";
 
 function NotesApp() {
   const insets = useSafeAreaInsets();
 
+  //multiple usestates for things that need to be dynamic
   const [screen, setScreen] = useState<Screen>("home");
   const [notes, setNotes] = useState<Note[]>([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
+
+  //after trimming, does it have content condition
   const canSave = title.trim().length > 0 && content.trim().length > 0;
   const isForm = screen === "add" || screen === "edit";
 
+
+  //runs when app starts, displays all notes that are on local storage
   useEffect(() => {
     const loadNotes = async () => {
       try {
@@ -47,6 +55,8 @@ function NotesApp() {
     loadNotes();
   }, []);
 
+
+  //runs when any note is added/deleted
   useEffect(() => {
     const saveNotes = async () => {
       try {
