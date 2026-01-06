@@ -18,8 +18,8 @@ type Note = {
   createdAt: number;
 };
 
-type Screen = "home" | "add";
-const STORAGE_KEY = "notes_v1";
+type Screen = "home" | "add" | "edit";
+const STORAGE_KEY = "notes";
 
 function NotesApp() {
   const insets = useSafeAreaInsets();
@@ -28,8 +28,10 @@ function NotesApp() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const canSave = title.trim().length > 0 && content.trim().length > 0;
+  const isForm = screen === "add" || screen === "edit";
 
   useEffect(() => {
     const loadNotes = async () => {
@@ -56,18 +58,36 @@ function NotesApp() {
     saveNotes();
   }, [notes]);
 
-  const openNote = (note: Note) => Alert.alert(note.title || "Untitled", note.content);
+  const openNote = (note: Note) => {
+    setEditingId(note.id);
+    setTitle(note.title);
+    setContent(note.content);
+    setScreen("edit");
+  };
 
   const confirmDelete = (noteId: string) => {
     Alert.alert("Delete note?", "This action cannot be undone.", [
       { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => setNotes((p) => p.filter((n) => n.id !== noteId)) },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          setNotes((p) => p.filter((n) => n.id !== noteId));
+          if (editingId === noteId) {
+            setScreen("home");
+            setEditingId(null);
+            setTitle("");
+            setContent("");
+          }
+        },
+      },
     ]);
   };
 
   const goToAdd = () => {
     setTitle("");
     setContent("");
+    setEditingId(null);
     setScreen("add");
   };
 
@@ -76,22 +96,29 @@ function NotesApp() {
       Alert.alert("Missing info", "Please enter both a title and content.");
       return;
     }
-    const newNote: Note = {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      title: title.trim(),
-      content: content.trim(),
-      createdAt: Date.now(),
-    };
-    setNotes((prev) => [newNote, ...prev]);
+    if (screen === "edit" && editingId) {
+      setNotes((prev) =>
+        prev.map((note) => (note.id === editingId ? { ...note, title: title.trim(), content: content.trim() } : note)),
+      );
+    } else {
+      const newNote: Note = {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title: title.trim(),
+        content: content.trim(),
+        createdAt: Date.now(),
+      };
+      setNotes((prev) => [newNote, ...prev]);
+    }
+    setEditingId(null);
     setScreen("home");
   };
 
   return (
     <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.container}>
-        {screen === "add" ? (
+        {isForm ? (
           <>
-            <Text style={styles.h1}>Add Note</Text>
+            <Text style={styles.h1}>{screen === "edit" ? "Edit Note" : "Add Note"}</Text>
 
             <Text style={styles.label}>Title</Text>
             <TextInput value={title} onChangeText={setTitle} placeholder="e.g. Grocery list" style={styles.input} />
@@ -107,7 +134,13 @@ function NotesApp() {
             />
 
             <View style={styles.row}>
-              <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => setScreen("home")}>
+              <Pressable
+                style={[styles.btn, styles.btnGhost]}
+                onPress={() => {
+                  setScreen("home");
+                  setEditingId(null);
+                }}
+              >
                 <Text style={styles.btnGhostText}>Cancel</Text>
               </Pressable>
 
@@ -116,7 +149,7 @@ function NotesApp() {
                 onPress={saveNote}
                 disabled={!canSave}
               >
-                <Text style={styles.btnPrimaryText}>Save</Text>
+                <Text style={styles.btnPrimaryText}>{screen === "edit" ? "Save Changes" : "Save"}</Text>
               </Pressable>
             </View>
           </>
@@ -152,7 +185,7 @@ function NotesApp() {
               />
             )}
 
-            <Text style={styles.hint}>Tip: Tap a note to view it. Long press to delete.</Text>
+            <Text style={styles.hint}>Tip: Tap a note to edit it. Long press to delete.</Text>
           </>
         )}
       </View>
